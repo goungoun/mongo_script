@@ -1,0 +1,124 @@
+136.
+
+//실행 종류별 요청 횟수와 평균실행시간, 최대실행시간
+db.system.profile.aggregate({
+  $group : { 
+     _id : "$op", count : {$sum : 1}, 
+     MaxResponseTime : { $max : "$millis" }, 
+     AvgResponseTime : { $avg : "$millis" }
+  }        
+});
+
+
+141.
+use admin
+db.runCommand({ logRotate: 1})
+
+use admin
+db.runCommand({ getLog : "*" });		//전체 로그 목록
+db.runCommand({ getLog : "global" });	//특정 로그 획득
+
+
+149.
+계정 생성/삭제 방법
+use admin
+db.createUser({
+  user : "admin", pwd : "admin", 
+  roles : [
+    { role : "root", "db" : "admin" }
+  ]
+})
+db.dropUser("gdhong")	
+	
+- 각 데이터베이스별 사용자 계정
+use test
+db.createUser({
+  user : "user1", pwd : "user1", 
+  roles : [
+    { role : "dbOwner", "db" : "test" }
+  ]
+})
+
+
+
+
+150.
+ Role 생성 방법 예
+use test
+db.createRole({ 
+  role : "users",
+  privileges: [
+    { resource: { db:"test", collection:"zipcodes" }, 
+      actions: [ "find", "update", "insert" ] }
+  ],
+  roles : [ 
+    { role : "read", db : "test" }
+  ]
+})
+
+
+151.
+db.runCommand({connectionStatus : 1})
+
+
+
+
+152.
+use admin
+db.createUser({
+  user : "admin", pwd : "admin", 
+  roles : [
+    { role : "root", "db" : "admin" }
+  ]
+})
+
+use nasdaq
+db.createRole({ 
+  role : "stocks_read",
+  privileges: [
+    { resource: { db:"nasdaq", collection:"stocks" }, 
+      actions: [ "find" ] }
+  ],
+  roles : [ ]
+})
+
+use nasdaq
+db.createUser({
+  user : "user1", pwd : "user1", 
+  roles : [
+    { role : "dbOwner", "db" : "nasdaq" }
+  ]
+})
+
+db.createUser({
+   user : "user2", pwd : "user2", 
+   roles : [
+      { role : "read", "db" : "nasdaq" }
+   ]
+})
+
+db.createUser({
+   user : "user3", pwd : "user3", 
+   roles : [
+     { role : "stocks_read", "db" : "nasdaq" }
+   ]
+})
+
+
+
+153.
+use nasdaq
+db.auth("user3", "user3")
+
+db.auth("admin", "admin")
+db.runCommand({connectionStatus : 1})
+
+
+
+
+
+
+
+
+
+
