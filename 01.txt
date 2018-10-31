@@ -1,0 +1,242 @@
+19.
+var bulk = db.users.initializeUnorderedBulkOp();
+bulk.insert( { user : "gdhong", name:"홍길동" } );
+bulk.insert( { user : "mrlee", name:"이몽룡" });
+bulk.insert( { user : "chsung", name:"chsung" } );
+bulk.execute();
+
+
+21.
+db.persons.insert({ _id:1, name:"홍길동", tel:"010-2121-2222", email:"gdhong@test.com" })
+db.persons.insert({ _id:2, name:"이몽룡", tel:"010-3333-1111", email:"mrlee@test.com" })
+db.persons.update({ name:"홍길동" }, { tel:"010-9999-9999" })
+db.persons.find()
+
+
+
+22.
+db.sites.insert({ _id : 'http://naver.com', hits : 20 });
+db.sites.insert({ _id : 'http://daum.net', hits : 30 });
+db.sites.update(
+    { _id : 'http://daum.net'}, 
+    { $inc : { hits : 1} }
+);
+db.sites.find();
+
+
+23.
+db.users.insert({
+   _id : 'A0001',
+   name : 'joe',
+   age : 30
+});
+db.users.findOne();
+db.users.update({ _id : 'A0001' }, { $set : { hobby : [ 'soccer', 'music' ] } });
+db.users.findOne();
+db.users.update({ _id : 'A0001' }, { $set : { age : 40 } });
+db.users.findOne();
+db.users.update({ _id : 'A0001' }, { $unset : { hobby : 1 } });
+db.users.findOne();
+
+
+24.
+db.blog.insert({ _id : 100243, title : 'test blog', author : 'joe', 
+     text : 'Good Morning! Vietnam!',
+     comments : []
+});
+db.blog.update({ _id : 100243 }, 
+   { $push : { comments : { writer: 'smith', text : 'nice movie!' } } });
+db.blog.update({ _id : 100243 }, 
+   { $push : { comments : { writer: 'obama', text : 'war is over!' } } });
+db.blog.update({ _id : 100243 }, 
+   { $addToSet : { comments : { writer: 'obama', text : 'war is over!' } } });
+
+
+25.
+db.users.insert({ _id : 'A0001', name : '홍길동', tel : [] });
+db.users.update({ _id : 'A0001'}, { $addToSet : { tel : '010-222-3331' } });
+db.users.update({ _id : 'A0001'}, { $addToSet : { tel : '010-222-3332' } });
+db.users.update({ _id : 'A0001', tel : { $ne : '010-222-3332' } }, 
+                        { $push : { tel : '010-222-3332' } });
+db.users.update({ _id : 'A0001'}, { 
+      $addToSet : { 
+           tel : { $each : [ '010-222-3331', '010-222-3333', '010-222-3339' ] }
+      } 
+});
+
+
+
+26.
+db.users.insert({
+    _id:'A0001', 
+    name:'joe', 
+    todo : [ 'meeting', 'coding', 'edit books', 'reservation' ]
+});
+
+db.users.update({ _id:'A0001'}, { $pull : { todo : 'coding' } });
+db.users.findOne();
+
+
+27.
+db.pageviews.update({ _id : 'http://naver.com' }, { $inc : { hits : 1} }, {upsert:true});
+db.pageviews.update({ _id : 'http://daum.net' }, { $inc : { hits : 1} }, {upsert:true});
+db.pageviews.update({ _id : 'http://naver.com' }, { $inc : { hits : 1} }, {upsert:true});
+db.pageviews.update({ _id : 'http://daum.net' }, { $inc : { hits : 1} }, {upsert:true});
+db.pageviews.update({ _id : 'http://daum.net' }, { $inc : { hits : 1} }, {upsert:true});
+db.pageviews.find();
+
+
+28.
+db.pageviews.update({}, {$inc : { hits : 10 }}, { multi:true })
+db.pageviews.find();
+
+
+29.
+db.createCollection( "contacts",
+   { validator: { $or:
+      [
+         { phone: { $type: "string" } },
+         { email: { $regex: /@mongodb\.com$/ } },
+         { status: { $in: [ "Unknown", "Incomplete" ] } }
+      ]
+   }
+} )
+
+
+db.runCommand({ 
+   collMod: "contacts", 
+   validator: { 
+      $and: [ 
+         { year_of_birth: {$lte: 1994} }, 
+         { 
+            $or: [ 
+               { phone: { $type: "string"} }, 
+               { email: { $type: "string"} } 
+            ]
+         }
+       ] 
+   },
+   validationLevel : "moderate"
+})
+
+
+31.
+db.scores.find({ score : { $gte : 91 } }, { name:1, score:1, _id: 0 }) 
+
+db.scores.find({ score : { $gte : 80 } })
+db.scores.find({ score : { $gte : 71, $gte : 80 } })
+
+db.scores.find({ score : { $in : [ 81, 82 ] } });
+db.scores.find({ $or : [ { score : 80 }, { name : "성춘향" } ] })
+
+
+
+32.
+db.scores.insert({ kor : 80 })
+db.scores.insert({ kor : 90 })
+db.scores.insert({ kor : null })
+db.scores.insert({ eng : null })
+
+db.scores.find({ kor : null })		//결과 확인 
+db.scores.find({ eng : null })		//결과 확인
+
+db.scores.find({ eng : { $in : [ null ], $exists : true } });
+
+
+33.
+//도시 이름이 ABE로 시작하는  것들
+db.zipcodes.find({ city : /^ABE/})
+//도시 이름이 ABE로 시작하고 뒤에 5글자의 alphanumeric이 이어지는 경우만 조회
+db.zipcodes.find({ city : /^ABE(\w{5})$/})
+//도시 이름이 A또는 B로 시작하고 마지막이 C로 끝나는 것들
+db.zipcodes.find({ city : /^(A|B)\w+C$/})
+
+db.food.insert({  _id : 1, fruit : ["apple","banana","peach"] })
+db.food.insert({  _id : 2, fruit : ["apple","pineapple","orange"] })
+db.food.insert({  _id : 3, fruit : ["apple","banana","strawberry"] })
+db.food.insert({  _id : 4, fruit : ["apple","banana"] })
+
+//같다는 의미가 아니라 포함여부를 확인하는 쿼리 구문임.
+db.food.find({ fruit : "banana"})
+
+
+
+34.
+db.food.find({ fruit : { $size : 3 } })
+
+db.food.update({_id:1}, { $push : { fruit : 'strawberry' }})
+db.food.find({ fruit : { $size : { $gt : 2}}})
+
+db.food.update({ _id : 1 }, { $push : { fruit : 'pear' } })
+db.food.update({ _id : 1 }, { $push : { fruit : 'kumquat' } })
+db.food.find({ _id : 1 }, { fruit : { $slice : 2 } })		//앞 2개
+db.food.find({ _id : 1 }, { fruit : { $slice : -2 } })		//마지막 2개
+db.food.find({ _id : 1 }, { fruit : { $slice : [1,2] } })	//1개 skip, 2개 take
+
+
+35.
+db.persons.insert({ _id : 1,
+   name : { first: "John",  last : "Kennedy" }, age : 40  });
+db.persons.insert({ _id : 2, name : { first: "Will",  last : "Smith" }, age : 31  });
+db.persons.insert({ _id : 3, name : { first: "Barack",  last : "Obama" }, age : 60  });
+db.persons.insert({ _id : 4, 
+   name : { first: "John", middle : "F",  last : "Kennedy" }, age : 60  });
+
+//middle이 존재하는 것은 검색하지 못함.
+db.persons.find({ name : { first : "John", last : "Kennedy" } });
+//middle이 존재하는 이름도 검색함.
+db.persons.find({ "name.first" : "John", "name.last" : "Kennedy" });
+
+
+36.
+db.blog.insert({  content : '블로그1',
+  comments : [
+     { author : 'joe', score : 3, comment : 'nice post' },
+     { author : 'mary', score : 6, comment : 'bad post' }
+  ]
+});
+
+db.blog.insert({ content : '블로그2',
+  comments : [
+     { author : 'ann', score : 4, comment : 'nice post' },
+     { author : 'mary', score : 2, comment : 'terrible post' }
+  ]
+});
+
+db.blog.insert({ content : '블로그3',
+  comments : [
+     { author : 'joe', score : 5, comment : 'ranny!' },
+     { author : 'won', score : 7, comment : 'so coooool~!' }
+  ]
+});
+
+
+37.
+//**joe가 쓴것이면서 score가 5이상인 comments가 있는 document만 검색
+
+//comment 키에 대한 내용이 없으므로 조회가 안됨.
+db.blog.find({ comments : { author : 'joe', score : { $gte : 5 } } })
+
+//comments 배열내에서 둘중의 하나라도 일치하면 조회됨. 원하는 결과 아님.
+db.blog.find({ 'comments.author' : 'joe', 'comments.score' : { $gte : 5} })
+
+//원하는 결과 도출!!
+db.blog.find({ comments : { $elemMatch : { author: 'joe', score : { $gte : 5} } } })
+
+
+
+
+38.
+var cursor = db.persons.find();
+while (cursor.hasNext()) {
+  var doc = cursor.next();
+  print(doc.name.first + " " + doc.name.last);
+}
+
+//scores 컬렉션에서 name,score 필드만 조회하여 성적순으로 내림차순 정렬한 뒤
+//앞에서 5개를 skip하고 10개만 조회함.
+db.scores.find({ }, { name : 1, score : 1 }).sort({ score : -1 }).skip(5).limit(10);
+
+
+
+
