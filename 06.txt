@@ -1,6 +1,71 @@
 117.
 
-[ s1,s2,s3 가상머신에서 ]
+[ s2,s3,s4 가상머신에서 ]
 ./bin/mongod --dbpath data/config --bind_ip_all --port 10000 --configsvr --logpath logs/config/logconfig.txt --replSet cfg –-fork
 ./bin/mongod --dbpath data/sh --bind_ip_all --port 27017 --shardsvr --logpath logs/sh/logsh.txt --fork
+
+
+[ s2:10000으로 접속 후 Config Server를 ReplicaSet으로 구성 ]
+rs.initiate()
+rs.add("s3:10000")
+rs.add("s4:10000")
+
+
+[s1 가상머신에서 ]
+~/mongodb/bin/mongos --bind_ip_all --configdb s2:10000,s3:10000,s4:10000 --port 27017 --logpath ~/mongodb/logs/sh/logsh.txt --fork
+
+[ chunkSize 변경 ]
+3.6버전부터는 mongos 기동시에 설정 불가
+터미널을 열어서 mongos에 접속 후 config db의 settings 컬렉션의 데이터를 save한다.
+
+use config
+//chunksize 1로 조정
+db.settings.save( { _id:"chunksize", value: NumberLong(1) } )
+
+
+118.
+use test
+for ( i = 100000; i < 110000; i++ ) { 
+    db.grades.insert({student_id: i, type: "exam", score : Math.random() * 100 });    
+    db.grades.insert({student_id: i, type: "quiz", score : Math.random() * 100 }); 
+    db.grades.insert({student_id: i, type: "homework", score : Math.random() * 100 }); 
+}
+
+db.grades.createIndex({ student_id:1 }, { background : true });
+
+
+
+119.
+sh.addShard("s1:27017");
+sh.addShard("s2:27017");
+sh.addShard("s3:27017");
+
+sh.enableSharding("test");
+sh.shardCollection("test.grades", {"student_id" : 1})
+
+
+126.
+./bin/mongostat --host 192.168.56.104 --port 27017 --discover  5
+
+
+
+130.
+sh.stopBalancer()
+use config
+db.settings.update({ _id:"balancer" }, 
+    { $set : { activeWindow : { "start" : "23:00", "stop" : "05:00" } } });
+
+use config
+db.settings.save({"_id" : "chunkSize", value : 32 })	
+
+sh.setBalancerState(false);		//밸런서 기능 끄기
+db.locks.find({ "_id" : "balancer" });	//state필드가 0이면 밸런서가 꺼진 상태
+//num 필드가 1200이 포함된 청크를 test01 샤드로 이동시킴
+sh.moveChunk("test.users", { num : 1200 }, "test01");
+//청크크기가 chunkSize 설정값보다 크면 이동 불가	
+
+
+
+
+
 
