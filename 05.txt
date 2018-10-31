@@ -1,0 +1,75 @@
+
+99.
+use test
+db.user.insert({ name :'gdhong', age:20})
+db.user.update({name:'gdhong'}, { $set : { age:30 }})
+use local
+db.oplog.rs.find().sort({ts:-1}).limit(5);
+
+
+
+{   
+     "ts" : Timestamp(1349411756000, 1), 
+     "h" : NumberLong("8128126756148586681"), 
+     "op" : "u", 
+     "ns" : "test.user", 
+     "o2" : { "_id" : ObjectId("506e638d7b3ab77698be30a8") }, 
+     "o" : { "$set" : { "age" : 30 } } 
+}
+
+
+
+105.
+~/mongodb/bin/mongod --dbpath /data/db --bind_ip s1 --replSet test001 --logpath /var/log/mongodb.log  --port 27017  --fork
+
+mongod --config /etc/mongod.conf
+
+storage:
+    dbPath: "/data/db“
+    journal:
+        enabled: true
+systemLog:
+    destination: file
+    path: "/var/log/mongodb.log"
+    logAppend: true
+replication:
+    oplogSizeMB: 10240
+    replSetName: "test001"
+processManagement:
+    fork: true
+…
+
+[ s1, s2, s3 가상머신에서 각각]
+./bin/mongod --dbpath data/db --bind_ip s1 --replSet test001 --logpath logs/mongodb.log  --port 27017  --fork
+./bin/mongod --dbpath data/db --bind_ip s2 --replSet test001 --logpath logs/mongodb.log  --port 27017  --fork
+./bin/mongod --dbpath data/db --bind_ip s3 --replSet test001 --logpath logs/mongodb.log  --port 27017  --fork
+
+
+
+106.
+
+[ s1에 접속한 후 ]
+
+rs.initiate({
+  "_id" : "test001", "members" : [
+    {"_id" : 1, "host" : "s1:27017"},
+    {"_id" : 2, "host" : "s2:27017"},
+    {"_id" : 3, "host" : "s3:27017"}
+  ]
+})
+
+또는
+
+rs.initiate()
+rs.add("s2:27017")
+rs.add("s2:27017")
+
+-------
+cfg = rs.conf();
+cfg.members[0].priority = 2;
+rs.reconfig(cfg);
+
+
+
+
+
