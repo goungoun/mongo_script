@@ -1,0 +1,435 @@
+67.
+use ch07
+db.words.insert({sentence : "peter Piper picked a peck of pickled peppers"})
+db.words.insert({sentence : "A peck of pickled peppers Peter Piper picked"})
+db.words.insert({sentence : "If Peter Piper picked a peck of Peppers"})
+db.words.insert({sentence : "Where's the peck of pickled peppers Peter Piper picked"})
+
+
+
+70.
+var m1 = function() {
+    var wordlist = this.sentence.match(/\w+/g);
+    if (wordlist == null)
+      return null;
+    for (var i=0; i < wordlist.length; i++) {
+      emit(wordlist[i].toLowerCase() , {count : 1});
+    }
+}
+//reduc로의 입력값(Shuffling 결과 값) : [ {count:1}, {count:1}, ...... ]
+var r1 = function(key, values) {
+    var result ={ count : 0 };
+    for (var i=0; i < values.length; i++) {
+      result.count += values[i].count;
+    }  
+    return result;
+}
+
+db.words.mapReduce(m1, r1, { 
+   out : { replace : 'mr' } 
+});
+db.mr.find()
+
+
+71.
+db.students.insert( { student: "Richard Gere", 
+     courses: ['Music', 'Korean', 'Mathematics'] });
+db.students.insert( { student: "Will Smith", 
+     courses: ['English', 'Korean', 'Science', 'Music'] });
+db.students.insert( { student: "Barack Obama", 
+     courses: ['Music', 'Theatre', 'Dance'] });
+db.students.insert( { student: "Mitt Romney", 
+     courses: ['History', 'English', 'Science', 'Korean'] });
+db.students.insert( { student: "Tommy Lee Jones", 
+     courses: ['Arts', 'Mathematics', 'Dance'] });
+
+
+72.
+var map = function() {
+  for (var i=0; i < this.courses.length; i++) {
+     var key = this.courses[i];
+     var value = { students : [ this.student] };
+     emit(key, value);
+  }
+}
+
+var reduce = function(key, values) { 
+  var studentList = { students : [] };
+  for (var i in values) {
+    studentList.students = values[i].students.concat(studentList.students);
+  }
+  return studentList;
+}
+
+db.students.mapReduce(map, reduce, { out : { replace : "pivot" } });
+db.pivot.find()
+
+
+76.
+use nasdaq
+
+var m1 = function() {
+  emit(this.stock_symbol, { max:this.close, sum:this.close, count:1 });
+}
+
+var r1 = function(key, values) {
+  var result = { max:0, sum:0, count:0 };
+  for (var i=0; i < values.length; i++) {
+    var v = values[i];
+    result.sum += v.sum;
+    result.count += v.count;
+    if (result.max < v.max) {
+      result.max = v.max;
+    }
+  }
+  return result;
+}
+
+
+
+77.
+db.stocks.mapReduce(m1, r1, {
+  out : { replace : "stocks_mr" },
+  query : {
+    stock_symbol : /^G/, 
+    date : { $gte:"2006-01-01", $lte:"2006-12-31" }
+  },
+  finalize : function(key,reduced) {
+    reduced.avg = (reduced.sum / reduced.count).toFixed(2);
+    delete reduced.sum;
+    delete reduced.count;
+    return reduced;
+  }  
+})
+
+//실행 결과 확인(최대 종가가 큰 순으로 정렬)
+db.stocks_mr.find().sort({ 'value.max' : -1 })
+
+
+
+79.
+<<< board_aggregation.txt >>>
+use ch08
+db.board.insert({
+  title : "this is my title" ,
+  author : "bob" ,
+  posted : new Date () ,
+  pageViews : 5 ,
+  tags : [ "fun" , "good" , "fun" ] ,
+  comments : [
+    { author :"joe" , text : "this is cool" } ,
+    { author :"sam" , text : "this is bad" }
+  ],
+  other : { foo : 5 }
+});
+
+db.board.insert({
+  title : "title!!!" ,
+  author : "smith" ,
+  posted : new Date () ,
+  pageViews : 2 ,
+  tags : [ "computer" , "good" ] ,
+  comments : [
+    { author :"joe" , text : "this is cool" } ,
+    { author :"sam" , text : "this is bad" }
+  ],
+  other : { foo : 5 }
+});
+
+db.board.insert({
+  title : "title22!!!" ,
+  author : "john" ,
+  posted : new Date () ,
+  pageViews : 2 ,
+  tags : [ "song" , "good", "music" ] ,
+  comments : [
+    { author :"joe" , text : "this is cool" } ,
+    { author :"sam" , text : "this is bad" }
+  ],
+  other : { foo : 5 }
+});
+
+db.board.insert({
+  title : "Today Music" ,
+  author : "smith" ,
+  posted : new Date () ,
+  pageViews : 5 ,
+  tags : [ "music" , "weekend", "song" ] ,
+  comments : [
+    { author :"joe" , text : "this is cool" } ,
+    { author :"sam" , text : "this is bad" }
+  ],
+  other : { foo : 5 }
+});
+
+
+
+
+80.
+//기본 형태
+db.board.aggregate([
+  { 
+    $project : {  _id:0,  title : 1, author : 1 , pageViews:1   } 
+  }
+])
+
+//pageViews 값에 10을 더한 값 리턴, 필드 이름 변경
+db.board.aggregate([
+  { 
+    $project : {
+      title : 1 ,
+      stats : { pv : "$pageViews", foo : "$other.foo", dpv : { $add:["$pageViews", 10] }  }
+    }
+  }
+]);
+
+
+
+
+81. 
+//tags에 song과 fun이 있는 것만 조회
+db.board.aggregate([
+  {
+    $match : { tags : { $in : ['song','fun'] }  }
+  }
+])
+
+//3 < pageViews <= 5
+db.board.aggregate([
+  {
+    $match : { pageViews: { $gt : 3, $lte : 5 }  }
+  }
+])
+
+
+82.
+db.createCollection("seq")
+for (var i=1; i < 1000; i++) {
+  db.seq.insert( { _id : i, name : "john" + i })
+}
+
+//한페이지에 5개씩 3번째 페이지
+db.seq.aggregate([
+  {  $skip : 10  }, 
+  {  $limit : 5    }
+])
+
+
+83.
+db.board.aggregate([
+  { 
+     $project : { title : 1, tags : 1, _id:0 }
+  },
+  { 
+    $unwind : "$tags" 
+  }
+])
+
+
+
+84.
+db.board.aggregate([
+  { 
+    $group : {  
+       _id : "$author",
+       docsPerAuthor : { $sum : 1 },
+       viewsPerAuthor : { $sum : "$pageViews" }
+    }
+  }
+])
+
+
+85.
+db.students.insert( { student: "Richard Gere", 
+    courses: ['Music', 'Korean', 'Mathematics'] });
+......
+db.students.aggregate([
+  {
+    $project : { student :1, courses : 1 },
+  },
+  { $unwind : "$courses" },
+  {  
+    $group : { 
+       _id : { course : "$courses" },
+       students : { $addToSet : "$student" }
+    }
+  }
+]);
+
+
+86.
+db.zipcodes.aggregate([
+  {
+    $match : { state : "CA" }
+  },
+  { 
+    $group: { 
+      _id: { state: "$state", city: "$city" },
+      pop: { $sum: "$pop" } 
+    } 
+  }, 
+  { $sort: { pop: 1 } }, 
+  { 
+    $group: { 
+      _id : "$_id.state",
+      biggestCity: { $last: "$_id.city" },
+      biggestPop: { $last: "$pop" },
+      smallestCity: { $first: "$_id.city" },
+      smallestPop: { $first: "$pop" } 
+    } 
+  }
+])
+
+
+87.
+db.zipcodes.aggregate([
+  {
+    $match : { state : "CA" }
+  }, 
+  { 
+    $group: {  
+      _id: { state: "$state", city: "$city" },
+      pop: { $sum: "$pop" } 
+    } 
+  }, 
+  {
+     $group: { 
+       _id : "$_id.state",
+       maxPop: { $max: "$pop" },
+       minPop: { $min: "$pop" } 
+     } 
+  }
+])
+
+
+88.
+db.zipcodes.aggregate([
+  {   
+     $match : { state : "CA", city : /^YUC/ } 
+  }, 
+  {    
+     $group: {
+         _id : { city: "$city" },
+         pop: { $avg: "$pop" }
+     }
+  }
+]);
+
+
+
+89.
+db.zipcodes.aggregate([
+  {
+    $project : { city : "$city", state : "$state", pop : "$pop" }
+  }, 
+  {
+     $group : {
+       _id : { city : "$city", state : "$state" },
+       pop : { $sum : "$pop" }
+     }
+  }, 
+  { $sort : { pop : -1 }  }, 
+  { $limit : 5 }
+])
+
+
+90.
+use nasdaq
+db.stocks.aggregate([
+  {
+     $match : {  stock_symbol : /^GO/,  date : { $gte : "2006-01-01", $lte : "2006-12-31"  } }
+  },
+  {  $project : { _id:0, s:"$stock_symbol", c:"$close" }   },
+  {
+     $group : {
+        _id : { symbol : "$s" },  
+        avg : { $avg : "$c" }, max : { $max : "$c" }
+     } 
+  },
+  {
+     $lookup : {
+        from : "symbols",
+        foreignField : "_id",
+        localField : "_id.symbol",
+        as : "symbol_desc"
+     } 
+  }
+])
+
+
+
+92.
+db.board.aggregate([{ 
+  $project : { 
+    title : 1,  
+    doctoredPageViews : {   $add:["$pageViews", 10]   }
+  }
+}])
+
+
+93.
+db.blog.aggregate([
+  { 
+    $project : { 
+       pubDate : { $substr : [ "$pubDate", 0, 8 ] }, 
+       count : { $add : 1 } 
+    }
+  }, {
+    $group : {   _id : {  pubDate : "$pubDate"  },
+       count : { $sum : "$count" } }
+  }, 
+  {  $sort : { count : -1 }  }, {  $limit : 5  }
+])
+
+
+
+//페이지 뷰가 3이상이면 Over3, 3미만이면 Not Over 3 
+db.board.aggregate({
+  $project : {
+     title : "$title",
+     hit : { 
+        $cond : [
+            { $gte : [ "$pageViews", 3] }, 'Over 3', 'Not Over 3'
+        ]
+     }
+  }
+})
+
+
+96.
+db.bulk.insert({name : '홍길동' })
+db.bulk.insert({name : '이몽룡', nick : '몽롱이'})
+db.bulk.insert({name : '박문수', nick : '어사또'})
+db.bulk.insert({name : '성춘향', nick : '이쁜이'})
+ 
+
+db.bulk.aggregate({
+  $project : { name : "$name", nick : { $ifNull : [ "$nick", "$name"] } } 
+});
+
+db.bulk.aggregate({
+  $project : { name : "$name", nick : { $ifNull : [ "$nick", "별명이 없습니다."] } } 
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
