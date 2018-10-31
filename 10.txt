@@ -1,0 +1,88 @@
+
+205.
+
+CREATE EXTERNAL TABLE stocks ( id STRING, exc STRING, symbol STRING, tdate STRING,
+open  DOUBLE, high DOUBLE, low DOUBLE, close DOUBLE, volume INT, adjclose DOUBLE)
+STORED BY 'com.mongodb.hadoop.hive.MongoStorageHandler'
+WITH SERDEPROPERTIES('mongo.columns.mapping'='{"id":"_id","exc":"exchange",
+"symbol":"stock_symbol","tdate":"date","open":"open","high":"high",
+"low":"low","close":"close","volume":"volume","adjclose":"adj close" }')
+TBLPROPERTIES('mongo.uri'='mongodb://192.168.56.1:27017/nasdaq.stocks');
+
+create external table symbols (id STRING, exc STRING, description STRING)  
+STORED BY 'com.mongodb.hadoop.hive.MongoStorageHandler'
+WITH SERDEPROPERTIES('mongo.columns.mapping'='{"id":"_id","exc":"type",
+"description":"description" }')
+TBLPROPERTIES('mongo.uri'='mongodb://192.168.56.1:27017/nasdaq.symbols');
+
+create external table mr_result1 (symbol  STRING, description STRING, avgclose  DOUBLE, maxclose  DOUBLE) 
+ROW FORMAT DELIMITED
+FIELDS TERMINATED BY ','
+LINES TERMINATED BY '\n'
+STORED AS TEXTFILE
+LOCATION '/user/mongo/mr_result';
+
+
+209.
+cd ~/spark
+./bin/spark-sql --master yarn --deploy-mode client --executor-memory 1G --num-executors 2
+
+SELECT a.symbol, b.description, AVG(close), MAX(close)
+FROM stocks a JOIN symbols b 
+ON a.symbol = b.id
+WHERE a.symbol LIKE 'G%'
+GROUP BY a.symbol, b.description;
+
+INSERT OVERWRITE TABLE mr_result1
+SELECT a.symbol, b.description, AVG(close), MAX(close)
+FROM stocks a JOIN symbols b 
+ON a.symbol = b.id
+GROUP BY a.symbol, b.description;
+
+
+215.
+./bin/spark-shell \
+     --conf "spark.mongodb.input.uri=mongodb://192.168.56.1:27017/nasdaq.stocks" \
+     --conf "spark.mongodb.output.uri=mongodb://192.168.56.1/nasdaq.avgmax" \
+     --packages org.mongodb.spark:mongo-spark-connector_2.11:2.0.0
+
+
+import com.mongodb.spark.config._
+import org.bson.Document
+import com.mongodb.spark._
+
+val rdd = MongoSpark.load(sc)
+println(rdd.first.toJson)
+
+var frdd = rdd.filter(doc=>doc.getString("stock_symbol").startsWith("GO"))
+println(frdd.first.toJson)
+
+val aggrdd = rdd.withPipeline(Seq(Document.parse("{ $match : { stock_symbol : /^GO/ } }"), Document.parse("{ $group : { _id : '$stock_symbol', avgClose : { $avg : '$close' }, maxCose : { $max : '$close' } } }")))
+aggrdd.saveToMongoDB()
+
+
+
+216.
+import com.mongodb.spark._
+import com.mongodb.spark.sql._
+
+val df = sc.loadFromMongoDB().toDF()
+df.filter(df("stock_symbol").startsWith("GO")).show()
+
+
+
+import org.bson.Document
+import com.mongodb.spark.config._
+
+val writeConfig = WriteConfig(
+    Map("collection" -> "test1", "writeConcern.w" -> "majority"), Some(WriteConfig(sc))
+)
+val sparkDocuments = sc.parallelize((1 to 10).map(i => Document.parse(s"{spark: $i}")))
+
+MongoSpark.save(sparkDocuments, writeConfig)
+
+
+
+
+
+
