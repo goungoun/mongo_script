@@ -117,7 +117,7 @@ db.randoms.find({ random : { $gt:0.4, $lt:0.5 }}).sort({ _id:-1 }).hint({ random
 mongorestore.exe  --port 10000 --host localhost  c:\nasdaq_sample
 
 //실행후 서버측 로그 확인
-db.stocks.find({ "stock_symbol": "GOOG"}).sort({ date : 1 }).explain("executeStats")
+db.stocks.find({ "stock_symbol": "GOOG"}).sort({ date : 1 }).explain("executionStats")
 
 
 59.
