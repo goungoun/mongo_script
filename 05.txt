@@ -20,7 +20,7 @@ db.oplog.rs.find().sort({ts:-1}).limit(5);
 
 
 105.
-~/mongodb/bin/mongod --dbpath /data/db --bind_ip s1 --replSet test001 --logpath /var/log/mongodb.log  --port 27017  --fork
+~/mongodb/bin/mongod --dbpath /data/db --bind_ip_all --replSet test001 --logpath /var/log/mongodb.log  --port 27017  --fork
 
 mongod --config /etc/mongod.conf
 
@@ -40,10 +40,7 @@ processManagement:
 …
 
 [ s1, s2, s3 가상머신에서 각각]
-./bin/mongod --dbpath data/db --bind_ip s1 --replSet test001 --logpath logs/mongodb.log  --port 27017  --fork
-./bin/mongod --dbpath data/db --bind_ip s2 --replSet test001 --logpath logs/mongodb.log  --port 27017  --fork
-./bin/mongod --dbpath data/db --bind_ip s3 --replSet test001 --logpath logs/mongodb.log  --port 27017  --fork
-
+./bin/mongod --dbpath data/db --bind_ip_all --replSet test001 --logpath logs/mongodb.log  --port 27017  --fork
 
 
 106.
