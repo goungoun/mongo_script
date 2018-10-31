@@ -1,0 +1,6 @@
+117.
+
+[ s1,s2,s3 가상머신에서 ]
+./bin/mongod --dbpath data/config --bind_ip_all --port 10000 --configsvr --logpath logs/config/logconfig.txt --replSet cfg –-fork
+./bin/mongod --dbpath data/sh --bind_ip_all --port 27017 --shardsvr --logpath logs/sh/logsh.txt --fork
+
